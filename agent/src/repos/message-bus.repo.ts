@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
 import type { Logger } from "pino";
-import { runAgent } from "../agent.ts";
+import { streamAgent } from "../agent.ts";
 
 export class MessageBusRepo {
     private readonly pub: Redis;
@@ -33,12 +33,14 @@ export class MessageBusRepo {
 
     private async handleChat(id: string, userId: string, message: string) {
         try {
-            const reply = await runAgent(userId, message);
-            this.log.info({ id, userId }, "chat reply sent");
-            await this.pub.publish("bus:chat:reply", JSON.stringify({ id, reply }));
+            for await (const chunk of streamAgent(userId, message)) {
+                await this.pub.publish("bus:chat:chunk", JSON.stringify({ id, chunk, done: false }));
+            }
+            await this.pub.publish("bus:chat:chunk", JSON.stringify({ id, chunk: "", done: true }));
+            this.log.info({ id, userId }, "chat stream done");
         } catch (err) {
-            this.log.error({ err, id, userId }, "chat error");
-            await this.pub.publish("bus:chat:reply", JSON.stringify({ id, reply: "Sorry, something went wrong." }));
+            this.log.error({ err, id, userId }, "chat stream error");
+            await this.pub.publish("bus:chat:chunk", JSON.stringify({ id, chunk: "Sorry, something went wrong.", done: true }));
         }
     }
 }

@@ -51,3 +51,20 @@ export async function runAgent(userId: string, message: string): Promise<string>
   );
   return String(result["output"] ?? "");
 }
+
+export async function* streamAgent(userId: string, message: string): AsyncGenerator<string> {
+  const stream = agentWithHistory.streamEvents(
+    { input: message },
+    { version: "v2", configurable: { sessionId: `agent:session:${userId}` } }
+  );
+
+  for await (const event of stream) {
+    if (
+      event.event === "on_chat_model_stream" &&
+      typeof event.data?.chunk?.content === "string" &&
+      event.data.chunk.content.length > 0
+    ) {
+      yield event.data.chunk.content;
+    }
+  }
+}

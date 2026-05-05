@@ -51,7 +51,6 @@ export class TgBotService {
             const phoneCandidate = parsePhone(ctx.text!)
             if (phoneCandidate) {
                 user = await this.userCacheRepo.create(ctx.from!.id, Number(phoneCandidate))
-
                 ctx.session = { user }
                 return next()
             }
@@ -84,7 +83,12 @@ export class TgBotService {
         if (!text) return
 
         const userId = String(ctx.session.user.phone)
-        const reply = await this.redisBus.chat(userId, text)
-        ctx.reply(reply)
+
+        let accumulated = ""
+        await this.redisBus.chat(userId, text, (chunk) => {
+            accumulated += chunk
+        })
+
+        ctx.reply(accumulated)
     }
 }
