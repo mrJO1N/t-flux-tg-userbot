@@ -1,53 +1,26 @@
-import pino from "pino";
-import { runAgent } from "./agent.ts";
-import { MessageBusRepo } from "./repos/index.ts";
+import "reflect-metadata"
+import "./features"
 
-const log = pino({ transport: { target: "pino-pretty" } });
-const PORT = Number(process.env["PORT"] ?? 3001);
-const REDIS_URL = process.env["REDIS_URL"] ?? "redis://localhost:6379";
+import { Inject, resolveDep, Singleton, LoggerService } from "./infrastructure";
+import { AgentProvider } from "./features/agent";
+import { MessageBusRepo } from "./message-bus.repo";
 
-new MessageBusRepo(REDIS_URL, log).listen();
+@Singleton()
+class App {
+    constructor(
+        @Inject(AgentProvider) private readonly agentProvider: AgentProvider,
+        @Inject(MessageBusRepo) private readonly messageBusRepo: MessageBusRepo,
+        @Inject(LoggerService) private readonly logger: LoggerService
+    ) { }
 
-Bun.serve({
-  port: PORT,
-  async fetch(req) {
-    const url = new URL(req.url);
-
-    if (req.method === "GET" && url.pathname === "/health") {
-      return Response.json({ status: "ok" });
+    async run() {
+        await this.agentProvider.init()
+        this.messageBusRepo.listen()
     }
+}
 
-    if (req.method === "POST" && url.pathname === "/chat") {
-      let body: unknown;
-      try {
-        body = await req.json();
-      } catch {
-        return Response.json({ error: "Invalid JSON" }, { status: 400 });
-      }
-
-      if (
-        typeof body !== "object" ||
-        body === null ||
-        typeof (body as Record<string, unknown>)["userId"] !== "string" ||
-        typeof (body as Record<string, unknown>)["message"] !== "string"
-      ) {
-        return Response.json({ error: "userId and message are required" }, { status: 400 });
-      }
-
-      const { userId, message } = body as { userId: string; message: string };
-
-      try {
-        const reply = await runAgent(userId, message);
-        log.info({ userId, message, reply }, "agent response");
-        return Response.json({ reply });
-      } catch (err) {
-        log.error({ err, userId }, "agent error");
-        return Response.json({ error: "Agent error" }, { status: 500 });
-      }
-    }
-
-    return Response.json({ error: "Not found" }, { status: 404 });
-  },
-});
-
-log.info(`Agent listening on port ${PORT}`);
+const app = resolveDep(App)
+const logger = resolveDep(LoggerService)
+app.run()
+    .then(() => logger.info("run"))
+    .catch(err => logger.error("Fatal error", err))

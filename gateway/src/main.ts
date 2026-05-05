@@ -20,8 +20,6 @@ class App {
 
     async run() {
         await this.configService.connectDB()
-        const ts = await this.redisBus.ping()
-        this.logger.info("agent pong received", { ts })
         await this.tgBotService.init()
         // await this.tgUserBotService.init()
     }

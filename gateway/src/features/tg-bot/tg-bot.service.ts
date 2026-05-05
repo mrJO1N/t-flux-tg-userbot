@@ -65,7 +65,7 @@ export class TgBotService {
                 let result: any
                 for (const part of parts) {
                     await ctx.sendChatAction("typing")
-                    await sleepByText(part)
+                    // await sleepByText(part)
                     result = await originalReply(part, extra)
                 }
                 return result

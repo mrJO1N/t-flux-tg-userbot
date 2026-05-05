@@ -4,6 +4,10 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleDetection": "force",
+
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
