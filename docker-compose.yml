@@ -1,0 +1,124 @@
+services:
+
+  # ─────────────────────────────────────────
+  # MongoDB 7 — основная БД + Vector Search
+  # сессии, сообщения, объекты, RAG
+  # ─────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: broker_mongo
+    restart: unless-stopped
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-broker}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-broker_db}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - broker_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # Redis — сессии диалогов + pub/sub шина
+  # ─────────────────────────────────────────
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: broker_redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   command: redis-server --appendonly yes
+  #   networks:
+  #     - broker_net
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # ─────────────────────────────────────────
+  # Agent — LangChain.js ядро
+  # RAG, инструменты, логика агента
+  # ─────────────────────────────────────────
+  # agent:
+  #   build:
+  #     context: ./agent
+  #     dockerfile: Dockerfile
+  #   container_name: broker_agent
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     PORT: 3001
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
+  #     OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+  #     REDIS_URL: redis://redis:6379
+  #     MONGO_URL: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin
+  #   depends_on:
+  #     mongo:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - broker_net
+
+  # ─────────────────────────────────────────
+  # Gateway — монолит всех обёрток
+  # TG бот, юзербот, авито, звонки
+  # ─────────────────────────────────────────
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: broker_gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      AGENT_URL: http://agent:3001
+      REDIS_URL: redis://redis:6379
+      DB_URI: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin
+      # Telegram бот
+      TG_BOT_TOKEN: ${TG_BOT_TOKEN}
+      # Telegram юзербот
+      TG_API_ID: ${TG_API_ID}
+      TG_API_HASH: ${TG_API_HASH}
+      TG_SESSION_STRING: ${TG_SESSION_STRING}
+      # Звонки (SIP)
+      SIP_SERVER: ${SIP_SERVER}
+      SIP_USER: ${SIP_USER}
+      SIP_PASSWORD: ${SIP_PASSWORD}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      # redis:
+      #   condition: service_healthy
+      # agent:
+      #   condition: service_started
+    volumes:
+      - ./gateway/sessions:/app/sessions  # сессии юзербота
+    networks:
+      - broker_net
+
+# ─────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────
+volumes:
+  mongo_data:
+  redis_data:
+
+# ─────────────────────────────────────────
+# Network
+# ─────────────────────────────────────────
+networks:
+  broker_net:
+    driver: bridge

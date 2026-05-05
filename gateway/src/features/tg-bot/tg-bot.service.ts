@@ -36,7 +36,7 @@ export class TgBotService {
     ) { }
 
     async init() {
-        const bot = new Telegraf<AppContext>(this.config.BOT_TOKEN)
+        const bot = new Telegraf<AppContext>(this.config.TG_BOT_TOKEN)
 
         bot.use(async (ctx, next) => {
             let user = await this.userCacheRepo.findByTgId(ctx.from!.id)

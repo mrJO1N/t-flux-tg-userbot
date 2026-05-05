@@ -2,7 +2,7 @@ import { Singleton } from "../../infrastructure/injector"
 
 // config.ts
 const rawConfigSchema = {
-    BOT_TOKEN: { type: 'string', required: true },
+    TG_BOT_TOKEN: { type: 'string', required: true },
     LOG_LEVEL: "string",
     DB_URI: { type: "string", required: true }
 } as const

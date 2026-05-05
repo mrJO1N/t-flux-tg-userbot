@@ -17,9 +17,9 @@ class App {
     ) { }
 
     async run() {
+        await this.configService.connectDB()
         await this.tgBotService.init()
         // await this.tgUserBotService.init()
-        await this.configService.connectDB()
     }
 }
 

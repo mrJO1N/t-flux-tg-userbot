@@ -9,13 +9,14 @@ export class ConfigService {
     constructor(
         @Inject(ConfigProvider) private readonly config: ConfigProvider
     ) {
-        this.tgBot = new Telegraf(config.BOT_TOKEN)
+        this.tgBot = new Telegraf(config.TG_BOT_TOKEN)
     }
 
 
     async connectDB() {
         const uri = this.config.DB_URI;
 
+        console.log("start someting", uri)
         await mongoose.connect(uri);
         console.log("🍃 MongoDB connected successfully");
     }
@@ -23,6 +24,6 @@ export class ConfigService {
     getTGBot() {
         return this.tgBot
     }
-} mongoose
+}
 
 
