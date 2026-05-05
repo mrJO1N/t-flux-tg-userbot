@@ -2,6 +2,7 @@ import { ConfigProvider } from "../config";
 import { Inject, Injectable } from "../../infrastructure";
 import { Context, Telegraf } from "telegraf";
 import { UserCacheRepo } from "../user/user.cache.repo";
+import { RedisBus } from "../agent";
 import type { User } from "../user/user.model";
 
 const sleepByText = (text: string) => {
@@ -32,7 +33,8 @@ function parsePhone(text: string): string | undefined {
 export class TgBotService {
     constructor(
         @Inject(ConfigProvider) private readonly config: ConfigProvider,
-        @Inject(UserCacheRepo) private readonly userCacheRepo: UserCacheRepo
+        @Inject(UserCacheRepo) private readonly userCacheRepo: UserCacheRepo,
+        @Inject(RedisBus) private readonly redisBus: RedisBus,
     ) { }
 
     async init() {
@@ -72,14 +74,17 @@ export class TgBotService {
             return next()
         })
 
-        bot.on("message", this.handleMessage)
+        bot.on("message", (ctx) => this.handleMessage(ctx))
 
         bot.launch()
     }
 
     private async handleMessage(ctx: AppContext) {
-        await sleepByText(ctx.text!)
+        const text = ctx.text
+        if (!text) return
 
-        ctx.reply(`hello </new>${ctx.session.user.phone}</new>how r u?`)
+        const userId = String(ctx.session.user.phone)
+        const reply = await this.redisBus.chat(userId, text)
+        ctx.reply(reply)
     }
 }

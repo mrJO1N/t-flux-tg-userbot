@@ -1,5 +1,6 @@
 import { Redis } from "ioredis";
 import type { Logger } from "pino";
+import { runAgent } from "../agent.ts";
 
 export class MessageBusRepo {
     private readonly pub: Redis;
@@ -11,16 +12,33 @@ export class MessageBusRepo {
     }
 
     listen() {
-        this.sub.subscribe("bus:ping", (err) => {
+        this.sub.subscribe("bus:ping", "bus:chat", (err) => {
             if (err) { this.log.error(err, "message bus subscribe error"); return; }
-            console.log("subscribe")
-            this.log.info("message bus listening on bus:ping");
+            this.log.info("message bus listening on bus:ping, bus:chat");
         });
 
-        this.sub.on("message", (_ch, msg) => {
-            const payload = JSON.parse(msg) as { id: string; ts: number };
-            console.log(`on message`, msg)
-            this.pub.publish("bus:pong", JSON.stringify(payload));
+        this.sub.on("message", (channel, msg) => {
+            if (channel === "bus:ping") {
+                const payload = JSON.parse(msg) as { id: string; ts: number };
+                this.pub.publish("bus:pong", JSON.stringify(payload));
+                return;
+            }
+
+            if (channel === "bus:chat") {
+                const { id, userId, message } = JSON.parse(msg) as { id: string; userId: string; message: string };
+                this.handleChat(id, userId, message);
+            }
         });
+    }
+
+    private async handleChat(id: string, userId: string, message: string) {
+        try {
+            const reply = await runAgent(userId, message);
+            this.log.info({ id, userId }, "chat reply sent");
+            await this.pub.publish("bus:chat:reply", JSON.stringify({ id, reply }));
+        } catch (err) {
+            this.log.error({ err, id, userId }, "chat error");
+            await this.pub.publish("bus:chat:reply", JSON.stringify({ id, reply: "Sorry, something went wrong." }));
+        }
     }
 }

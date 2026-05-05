@@ -9,7 +9,7 @@ import { agentTools } from "./tools/index.ts";
 const redis = new Redis(process.env["REDIS_URL"] ?? "redis://localhost:6379");
 
 const llm = new ChatOpenAI({
-  model: "gpt-4o-mini",
+  model: "gemini-3-flash",
   temperature: 0.3,
   apiKey: process.env["OPENAI_API_KEY"],
   configuration: {
