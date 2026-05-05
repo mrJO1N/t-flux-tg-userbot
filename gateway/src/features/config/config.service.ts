@@ -16,7 +16,6 @@ export class ConfigService {
     async connectDB() {
         const uri = this.config.DB_URI;
 
-        console.log("start someting", uri)
         await mongoose.connect(uri);
         console.log("🍃 MongoDB connected successfully");
     }

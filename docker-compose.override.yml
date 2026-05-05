@@ -1,0 +1,12 @@
+# docker-compose.override.yml
+services:
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: broker_redisinsight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    networks:
+      - broker_net
+    depends_on:
+      - redis

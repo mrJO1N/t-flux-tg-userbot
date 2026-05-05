@@ -4,7 +4,7 @@ import "./features"
 import { Inject, resolveDep, Singleton, LoggerService } from "./infrastructure";
 import { TgBotService } from "./features/tg-bot"
 import { TgUserBotService } from "./features/tg-user-bot";
-import { ConfigService } from "./features";
+import { ConfigService, RedisBus } from "./features";
 
 
 @Singleton()
@@ -13,11 +13,15 @@ class App {
     constructor(
         @Inject(ConfigService) private readonly configService: ConfigService,
         @Inject(TgBotService) private readonly tgBotService: TgBotService,
-        @Inject(TgUserBotService) private readonly tgUserBotService: TgUserBotService
+        @Inject(TgUserBotService) private readonly tgUserBotService: TgUserBotService,
+        @Inject(RedisBus) private readonly redisBus: RedisBus,
+        @Inject(LoggerService) private readonly logger: LoggerService
     ) { }
 
     async run() {
         await this.configService.connectDB()
+        const ts = await this.redisBus.ping()
+        this.logger.info("agent pong received", { ts })
         await this.tgBotService.init()
         // await this.tgUserBotService.init()
     }

@@ -27,48 +27,48 @@ services:
   # ─────────────────────────────────────────
   # Redis — сессии диалогов + pub/sub шина
   # ─────────────────────────────────────────
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: broker_redis
-  #   restart: unless-stopped
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   command: redis-server --appendonly yes
-  #   networks:
-  #     - broker_net
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  redis:
+    image: redis:7-alpine
+    container_name: broker_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - broker_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ─────────────────────────────────────────
   # Agent — LangChain.js ядро
   # RAG, инструменты, логика агента
   # ─────────────────────────────────────────
-  # agent:
-  #   build:
-  #     context: ./agent
-  #     dockerfile: Dockerfile
-  #   container_name: broker_agent
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3001:3001"
-  #   environment:
-  #     PORT: 3001
-  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
-  #     OPENAI_BASE_URL: ${OPENAI_BASE_URL}
-  #     REDIS_URL: redis://redis:6379
-  #     MONGO_URL: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin
-  #   depends_on:
-  #     mongo:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   networks:
-  #     - broker_net
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: broker_agent
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+      REDIS_URL: redis://redis:6379
+      MONGO_URL: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - broker_net
 
   # ─────────────────────────────────────────
   # Gateway — монолит всех обёрток
@@ -100,10 +100,10 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-      # redis:
-      #   condition: service_healthy
-      # agent:
-      #   condition: service_started
+      redis:
+        condition: service_healthy
+      agent:
+        condition: service_started
     volumes:
       - ./gateway/sessions:/app/sessions  # сессии юзербота
     networks:

@@ -1,10 +1,14 @@
 import pino from "pino";
 import { runAgent } from "./agent.ts";
+import { MessageBusRepo } from "./repos/index.ts";
 
 const log = pino({ transport: { target: "pino-pretty" } });
 const PORT = Number(process.env["PORT"] ?? 3001);
+const REDIS_URL = process.env["REDIS_URL"] ?? "redis://localhost:6379";
 
-const server = Bun.serve({
+new MessageBusRepo(REDIS_URL, log).listen();
+
+Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
