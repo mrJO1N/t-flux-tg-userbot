@@ -1,11 +1,10 @@
-import { ConfigProvider } from "../features";
+import { ConfigProvider } from "./config";
 import { forwardRef, Inject, Injectable } from "./index";
 import pino, { type Logger } from "pino";
 
 @Injectable()
-export class LoggerService {
+export class LoggerProvider {
     public readonly pino: Logger;
-
 
     constructor(
         @Inject(forwardRef(() => ConfigProvider)) private readonly config: ConfigProvider

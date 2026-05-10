@@ -1,4 +1,4 @@
-import { Inject, Singleton } from "../../infrastructure";
+import { Inject, Singleton } from "..";
 import { ConfigProvider } from "./config.provider";
 import { Telegraf } from "telegraf";
 import mongoose from "mongoose"

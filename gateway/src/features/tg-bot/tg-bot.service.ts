@@ -1,9 +1,7 @@
-import { ConfigProvider } from "../config";
-import { Inject, Injectable } from "../../infrastructure";
+import { Inject, Injectable, ConfigProvider } from "../../infrastructure";
 import { Context, Telegraf } from "telegraf";
-import { UserCacheRepo } from "../user/user.cache.repo";
-import { RedisBus } from "../agent";
-import type { User } from "../user/user.model";
+import { UserCacheRepo, type IUser } from "../user";
+import { RedisBusRepo } from "../agent";
 
 const sleepByText = (text: string) => {
     const base = (text.length / 20) * 2_000
@@ -12,7 +10,7 @@ const sleepByText = (text: string) => {
 
 interface AppContext extends Context {
     session: {
-        user: User
+        user: IUser
     };
 }
 
@@ -34,7 +32,7 @@ export class TgBotService {
     constructor(
         @Inject(ConfigProvider) private readonly config: ConfigProvider,
         @Inject(UserCacheRepo) private readonly userCacheRepo: UserCacheRepo,
-        @Inject(RedisBus) private readonly redisBus: RedisBus,
+        @Inject(RedisBusRepo) private readonly redisBus: RedisBusRepo,
     ) { }
 
     async init() {

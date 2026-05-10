@@ -82,6 +82,7 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+      - "3002:3002"   # calls WebSocket (VoxImplant)
     environment:
       PORT: 3000
       AGENT_URL: http://agent:3001
@@ -93,10 +94,12 @@ services:
       TG_API_ID: ${TG_API_ID}
       TG_API_HASH: ${TG_API_HASH}
       TG_SESSION_STRING: ${TG_SESSION_STRING}
-      # Звонки (SIP)
-      SIP_SERVER: ${SIP_SERVER}
-      SIP_USER: ${SIP_USER}
-      SIP_PASSWORD: ${SIP_PASSWORD}
+      # Yandex SpeechKit (STT + TTS)
+      YANDEX_API_KEY: ${YANDEX_API_KEY}
+      YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID}
+      YANDEX_TTS_VOICE: ${YANDEX_TTS_VOICE:-alena}
+      # Calls WebSocket (VoxImplant → gateway)
+      CALLS_PORT: 3002
     depends_on:
       mongo:
         condition: service_healthy

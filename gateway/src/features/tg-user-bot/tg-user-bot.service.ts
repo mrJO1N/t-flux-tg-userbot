@@ -1,14 +1,10 @@
-import { ConfigProvider } from "../config";
-import { Inject, Injectable } from "../../infrastructure";
+import { Inject, Injectable, ConfigProvider } from "../../infrastructure";
 import { Context, Telegraf } from "telegraf";
-import { UserCacheRepo } from "../user/user.cache.repo";
-import type { User } from "../user/user.model";
+import { UserCacheRepo, type IUser } from "../user";
 
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions";
 import input from "input"; // npm i input
-
-
 
 const sleepByText = (text: string) => {
     const base = (text.length / 20) * 2_000
@@ -17,7 +13,7 @@ const sleepByText = (text: string) => {
 
 interface AppContext extends Context {
     session: {
-        user: User
+        user: IUser
     };
 }
 

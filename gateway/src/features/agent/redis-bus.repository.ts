@@ -4,7 +4,7 @@ import { UtilDataBusRepository } from "../utils/util.data-bus.repository"
 export type ChunkHandler = (chunk: string, done: boolean) => void
 
 @Singleton()
-export class RedisBus {
+export class RedisBusRepo {
     private readonly chunkHandlers = new Map<string, ChunkHandler>()
 
     constructor(@Inject(UtilDataBusRepository) private readonly bus: UtilDataBusRepository) {
