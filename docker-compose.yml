@@ -81,10 +81,8 @@ services:
     container_name: broker_gateway
     restart: unless-stopped
     ports:
-      - "3000:3000"
-      - "3002:3002"   # calls WebSocket (VoxImplant)
+      - "${GATEWAY_CALLS_PORT}:3002"   # calls WebSocket (VoxImplant)
     environment:
-      PORT: 3000
       AGENT_URL: http://agent:3001
       REDIS_URL: redis://redis:6379
       DB_URI: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin
@@ -99,7 +97,7 @@ services:
       YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID}
       YANDEX_TTS_VOICE: ${YANDEX_TTS_VOICE:-alena}
       # Calls WebSocket (VoxImplant → gateway)
-      CALLS_PORT: 3002
+      CALLS_PORT: ${GATEWAY_CALLS_PORT}
     depends_on:
       mongo:
         condition: service_healthy
