@@ -67,6 +67,37 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      reality-backend:
+        condition: service_healthy
+    networks:
+      - broker_net
+
+
+  reality-backend:
+    build:
+      context: ./reality-backend
+      dockerfile: Dockerfile
+    container_name: broker_reality-backend
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+      
+    ports:
+      - "${PORT}:3002"   # calls WebSocket (VoxImplant)
+    environment:
+      PORT: 3001
+      REDIS_URL: redis://redis:6379
+      DB_URI: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/reality-backend?authSource=admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - broker_net
 
