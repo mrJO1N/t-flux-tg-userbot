@@ -81,18 +81,19 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/healthcheck"]
+      test: ["CMD", "wget", "-qO-", "http://reality-backend:3002/healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
       
     ports:
-      - "${PORT}:3002"   # calls WebSocket (VoxImplant)
+      - "${REALITY_BACKEND_PORT}:3002"   # calls WebSocket (VoxImplant)
     environment:
-      PORT: 3001
+      HTTP_PORT: 3002
       REDIS_URL: redis://redis:6379
       DB_URI: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/reality-backend?authSource=admin
+      ENABLE_EXTENDED_ERROR_LOGS: ${ENABLE_EXTENDED_ERROR_LOGS:-0}
     depends_on:
       mongo:
         condition: service_healthy

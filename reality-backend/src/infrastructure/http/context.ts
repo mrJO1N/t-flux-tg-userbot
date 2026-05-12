@@ -1,27 +1,21 @@
+import type { Request as ExpressRequest, Response as ExpressResponse } from 'express'
 import type { ValidateSchema } from './decorators'
 
 export class HttpRequest<TQuery = Record<string, string>, TBody = unknown, TParams = Record<string, string>> {
     query!: TQuery
     params!: TParams
     body!: TBody
-    headers: Headers
+    headers: Record<string, string | string[] | undefined>
 
-    constructor(private _raw: Request, rawParams: Record<string, string> = {}) {
-        const url = new URL(_raw.url)
-        this.query = Object.fromEntries(url.searchParams) as TQuery
-        this.params = rawParams as TParams
-        this.headers = _raw.headers
+    constructor(req: ExpressRequest, params: Record<string, string> = {}) {
+        this.query = req.query as unknown as TQuery
+        this.params = params as TParams
+        this.body = req.body as TBody
+        this.headers = req.headers
     }
 
     async parseBody(): Promise<void> {
-        const ct = this.headers.get('content-type') ?? ''
-        if (ct.includes('application/json')) {
-            this.body = await this._raw.json()
-        } else if (ct.includes('text/')) {
-            this.body = await this._raw.text() as TBody
-        } else {
-            this.body = null as TBody
-        }
+        // body already parsed by express.json() middleware
     }
 }
 
@@ -34,40 +28,35 @@ export type Typed<TSchema extends ValidateSchema> = HttpRequest<
 >
 
 export class HttpResponse {
-    private _status = 200
-    private _body: string | null = null
-    private _headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    private _expressRes: ExpressResponse
+    private _statusCode = 200
     private _sent = false
+
+    constructor(res: ExpressResponse) {
+        this._expressRes = res
+    }
 
     get sent() { return this._sent }
 
     status(code: number): this {
-        this._status = code
+        this._statusCode = code
         return this
     }
 
     send(data: unknown): this {
-        this._body = typeof data === 'string' ? data : JSON.stringify(data)
+        this._expressRes.status(this._statusCode).send(data)
         this._sent = true
         return this
     }
 
     json(data: unknown): this {
-        this._body = JSON.stringify(data)
-        this._headers['Content-Type'] = 'application/json'
+        this._expressRes.status(this._statusCode).json(data)
         this._sent = true
         return this
     }
 
     setHeader(key: string, value: string): this {
-        this._headers[key] = value
+        this._expressRes.setHeader(key, value)
         return this
-    }
-
-    toBunResponse(): Response {
-        return new Response(this._body, {
-            status: this._status,
-            headers: this._headers,
-        })
     }
 }

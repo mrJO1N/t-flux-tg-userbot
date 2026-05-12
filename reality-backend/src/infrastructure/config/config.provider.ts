@@ -81,7 +81,7 @@ export class ConfigProvider {
     private isValidType(value: string, type: string): boolean {
         if (type === 'string') return true
         if (type === 'number') return !isNaN(Number(value))
-        if (type === 'boolean') return ['true', 'false'].includes(value.toLowerCase())
+        if (type === 'boolean') return ['true', 'false', '1', '0'].includes(value.toLowerCase())
         return false
     }
 
@@ -97,7 +97,7 @@ export class ConfigProvider {
                     self[key] = Number(value)
                     break
                 case 'boolean':
-                    self[key] = value.toLowerCase() === 'true'
+                    self[key] = value === '1' || value.toLowerCase() === 'true'
                     break
                 default:
                     self[key] = value

@@ -5,7 +5,7 @@ import { type ReturnModelType } from "@typegoose/typegoose";
 export abstract class UtilBaseRepo<T extends BeAnObject> {
     constructor(protected readonly model: ReturnModelType<AnyParamConstructor<T>>) { }
 
-    protected async sanitizeInput(input: string) {
+    protected sanitizeInput(input: string) {
         // just screening
         return input.replace(/([(){}*/\[\]№?+$^\\|])/g, "\\$1");
     }
@@ -60,26 +60,27 @@ export abstract class UtilBaseRepo<T extends BeAnObject> {
         return this.model.find(filter).exec() as unknown as Promise<T[]>
     }
 
-    protected async innerSearch(fieldsToSearch: string[], query: string) {
+    protected async innerSearch(fieldsToSearch: Array<string | { name: string; expr: unknown }>, query: string) {
         const terms = query
             .split(" ")
             .map(term => this.sanitizeInput(term.trim()))
             .filter(Boolean)
 
         const whereCondition = {
-            $or: fieldsToSearch.map(
-                field => terms.map(
-                    term => (
-                        {
-                            $regexMatch: {
-                                input: { $toString: "$" + field },
-                                regex: term,
-                                options: "i"
-                            }
+            $or: fieldsToSearch.flatMap(field => {
+                const input = typeof field === "string"
+                    ? { $toString: "$" + field }
+                    : field.expr
+                return terms.map(term => ({
+                    $expr: {
+                        $regexMatch: {
+                            input,
+                            regex: term,
+                            options: "i"
                         }
-                    )
-                )
-            )
+                    }
+                }))
+            })
         }
 
         return this.findAll(whereCondition)

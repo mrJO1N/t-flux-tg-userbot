@@ -10,19 +10,32 @@ export const objectIdFieldProps = {
     get: (val: Types.ObjectId | undefined) => val?.toString(),
 }
 
+function stripMongoFields(ret: Record<string, unknown>): Record<string, unknown> {
+    delete ret._id;
+    delete ret.__v;
+    for (const key of Object.keys(ret)) {
+        const val = ret[key];
+        if (Array.isArray(val)) {
+            val.forEach(item => { if (item && typeof item === 'object') stripMongoFields(item as Record<string, unknown>); });
+        } else if (val && typeof val === 'object') {
+            stripMongoFields(val as Record<string, unknown>);
+        }
+    }
+    return ret;
+}
+
 const commonModelOptions: IModelOptions = {
     schemaOptions: {
         timestamps: true,
-        // Главный секрет здесь: убираем _id, оставляем id (виртуалы и геттеры)
         toJSON: {
             getters: true,
             virtuals: true,
-            transform: (doc, ret) => { delete ret._id; return ret; }
+            transform: (_doc, ret) => stripMongoFields(ret)
         },
         toObject: {
             getters: true,
             virtuals: true,
-            transform: (doc, ret) => { delete ret._id; return ret; }
+            transform: (_doc, ret) => stripMongoFields(ret)
         },
     }
 };

@@ -5,4 +5,5 @@ export default {
     DB_URI: { type: "string", required: true },
     REDIS_URL: { type: "string", required: true },
     HTTP_PORT: { type: "number" },
+    ENABLE_EXTENDED_ERROR_LOGS: { type: "boolean" },
 } as const

@@ -1,7 +1,10 @@
-import { Singleton, container } from '../injector'
+import express, { type Request as ExpressRequest, type Response as ExpressResponse } from 'express'
+import { Singleton, container, Inject } from '../injector'
 import { type HttpMethod, type ValidateSchema, type RouteDefinition, getControllerRegistry } from './decorators'
 import { CONTROLLER_PREFIX, ROUTE_METHODS, VALIDATE_SCHEMA } from './metadata-keys'
 import { HttpRequest, HttpResponse } from './context'
+import { LoggerProvider } from '../logger'
+import { ConfigProvider } from '../config'
 
 interface CompiledRoute {
     method: string
@@ -14,6 +17,11 @@ interface CompiledRoute {
 @Singleton()
 export class HttpServer {
     private routes: CompiledRoute[] = []
+
+    constructor(
+        @Inject(LoggerProvider) private readonly logger: LoggerProvider,
+        @Inject(ConfigProvider) private readonly config: ConfigProvider,
+    ) { }
 
     private compilePath(prefix: string, path: string): { pattern: RegExp; paramNames: string[] } {
         const full = (prefix + path).replace(/\/+/g, '/')
@@ -56,31 +64,34 @@ export class HttpServer {
 
     listen(port: number): void {
         this.bootstrap()
-        Bun.serve({ port, fetch: (req) => this.handle(req) })
+        const app = express()
+        app.use(express.json())
+        app.use((req, res, next) => {
+            this.handle(req, res).catch(next)
+        })
+        app.listen(port)
     }
 
-    private async handle(bunReq: Request): Promise<Response> {
-        const url = new URL(bunReq.url)
-        const method = bunReq.method.toUpperCase()
+    private async handle(expressReq: ExpressRequest, expressRes: ExpressResponse): Promise<void> {
+        const method = expressReq.method.toUpperCase()
+        const pathname = expressReq.path
 
         for (const route of this.routes) {
             if (route.method !== method) continue
-            const match = url.pathname.match(route.pattern)
+            const match = pathname.match(route.pattern)
             if (!match) continue
 
             const params: Record<string, string> = {}
             route.paramNames.forEach((name, i) => { params[name] = match[i + 1] ?? '' })
 
-            const req = new HttpRequest(bunReq, params)
+            const req = new HttpRequest(expressReq, params)
             await req.parseBody()
-            const res = new HttpResponse()
+            const res = new HttpResponse(expressRes)
 
             const validationError = this.validate(route.validateSchema, req)
             if (validationError) {
-                return new Response(JSON.stringify({ error: validationError }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' },
-                })
+                expressRes.status(400).json({ error: validationError })
+                return
             }
 
             let nextError: unknown = undefined
@@ -89,27 +100,25 @@ export class HttpServer {
             try {
                 await route.handler(req, res, next)
             } catch (err) {
-                return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
-                    status: 500,
-                    headers: { 'Content-Type': 'application/json' },
-                })
+                if (this.config.ENABLE_EXTENDED_ERROR_LOGS) {
+                    this.logger.error('Unhandled route error', err, { method, pathname })
+                }
+                expressRes.status(500).json({ error: 'Internal Server Error' })
+                return
             }
 
             if (nextError) {
+                if (this.config.ENABLE_EXTENDED_ERROR_LOGS) {
+                    this.logger.error('Route middleware error', nextError, { method, pathname })
+                }
                 const msg = nextError instanceof Error ? nextError.message : 'Internal Server Error'
-                return new Response(JSON.stringify({ error: msg }), {
-                    status: 500,
-                    headers: { 'Content-Type': 'application/json' },
-                })
+                expressRes.status(500).json({ error: msg })
             }
 
-            return res.toBunResponse()
+            return
         }
 
-        return new Response(JSON.stringify({ error: 'Not Found' }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' },
-        })
+        expressRes.status(404).json({ error: 'Not Found' })
     }
 
     private validate(schema: ValidateSchema | undefined, req: HttpRequest): unknown {

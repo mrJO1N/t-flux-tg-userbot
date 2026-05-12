@@ -14,6 +14,7 @@ export class ConfigService {
         const uri = this.config.DB_URI;
 
         await mongoose.connect(uri);
+        await mongoose.connection.syncIndexes();
         console.log("🍃 MongoDB connected successfully");
     }
 }
