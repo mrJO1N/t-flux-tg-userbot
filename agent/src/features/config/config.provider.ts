@@ -6,6 +6,7 @@ const rawConfigSchema = {
     REDIS_URL: { type: "string", required: true },
     OPENAI_API_KEY: { type: "string", required: true },
     OPENAI_BASE_URL: { type: "string", required: true },
+    REALITY_BACKEND_URL: { type: "string", required: true },
 } as const
 
 

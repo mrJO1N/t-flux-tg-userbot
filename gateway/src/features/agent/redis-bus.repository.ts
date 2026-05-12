@@ -3,6 +3,8 @@ import { UtilDataBusRepository } from "../utils/util.data-bus.repository"
 
 export type ChunkHandler = (chunk: string, done: boolean) => void
 
+export type ChatSource = "tg" | "call"
+
 @Singleton()
 export class RedisBusRepo {
     private readonly chunkHandlers = new Map<string, ChunkHandler>()
@@ -20,6 +22,8 @@ export class RedisBusRepo {
     async chat(
         userId: string,
         message: string,
+        source: ChatSource,
+        phone: string,
         onChunk: ChunkHandler,
         timeoutMs = 30_000,
     ): Promise<void> {
@@ -38,7 +42,7 @@ export class RedisBusRepo {
                 }
             })
 
-            this.bus.publish("bus:chat", { id, userId, message })
+            this.bus.publish("bus:chat", { id, userId, message, source, phone })
         })
     }
 }

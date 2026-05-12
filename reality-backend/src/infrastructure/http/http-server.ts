@@ -112,6 +112,7 @@ export class HttpServer {
                     this.logger.error('Route middleware error', nextError, { method, pathname })
                 }
                 const msg = nextError instanceof Error ? nextError.message : 'Internal Server Error'
+             
                 expressRes.status(500).json({ error: msg })
             }
 

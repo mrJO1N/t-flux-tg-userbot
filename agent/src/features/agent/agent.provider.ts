@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { RunnableWithMessageHistory } from "@langchain/core/runnables";
 import { AgentExecutor, createOpenAIToolsAgent } from "langchain/agents";
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
@@ -8,6 +10,11 @@ import { Inject, Singleton } from "../../infrastructure";
 import { ConfigProvider } from "../config";
 import { UtilCacheRepository } from "../utils";
 import { AgentToolsProvider } from "./tools";
+
+const rawSystemPrompt = readFileSync(join(__dirname, "../../../SYSTEM_PROMPT.md"), "utf-8");
+// Escape braces so LangChain doesn't treat JSON examples as template variables.
+// Only {context} remains as a real placeholder, appended below.
+const systemPrompt = rawSystemPrompt.replace(/\{/g, "{{").replace(/\}/g, "}}") + "\n\n{context}";
 
 const SESSION_TTL_MS = 60 * 60 * 24 * 1000
 
@@ -32,14 +39,14 @@ class RepoChatHistory extends BaseListChatMessageHistory {
         await this.cache.set(this.key, mapChatMessagesToStoredMessages(messages), SESSION_TTL_MS)
     }
 
-    async clear(): Promise<void> {
+    override async clear(): Promise<void> {
         await this.cache.delete(this.key)
     }
 }
 
 @Singleton()
 export class AgentProvider {
-    private agentWithHistory!: RunnableWithMessageHistory<{ input: string }, Record<string, unknown>>
+    private agentWithHistory!: RunnableWithMessageHistory<{ input: string; context: string }, Record<string, unknown>>
 
     constructor(
         @Inject(ConfigProvider) private readonly config: ConfigProvider,
@@ -56,7 +63,7 @@ export class AgentProvider {
         })
 
         const prompt = ChatPromptTemplate.fromMessages([
-            ["system", "You are a helpful AI assistant. Be concise and accurate."],
+            ["system", systemPrompt],
             new MessagesPlaceholder("chat_history"),
             ["human", "{input}"],
             new MessagesPlaceholder("agent_scratchpad"),
@@ -75,9 +82,10 @@ export class AgentProvider {
         })
     }
 
-    async *stream(userId: string, message: string): AsyncGenerator<string> {
+    async *stream(userId: string, message: string, source: string, phone: string): AsyncGenerator<string> {
+        const context = `Source: ${source}\nPhone: ${phone}\nTime: ${new Date().toISOString()}`
         const events = this.agentWithHistory.streamEvents(
-            { input: message },
+            { input: message, context },
             { version: "v2", configurable: { sessionId: userId } },
         )
 

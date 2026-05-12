@@ -80,10 +80,11 @@ export class TgBotService {
         const text = ctx.text
         if (!text) return
 
-        const userId = String(ctx.session.user.phone)
+        const phone = String(ctx.session.user.phone)
+        const userId = phone
 
         let accumulated = ""
-        await this.redisBus.chat(userId, text, (chunk) => {
+        await this.redisBus.chat(userId, text, "tg", phone, (chunk) => {
             accumulated += chunk
         })
 

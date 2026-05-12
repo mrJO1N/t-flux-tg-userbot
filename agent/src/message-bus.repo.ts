@@ -25,14 +25,16 @@ export class MessageBusRepo {
         });
 
         this.sub.on("message", (_channel, msg) => {
-            const { id, userId, message } = JSON.parse(msg) as { id: string; userId: string; message: string };
-            this.handleChat(id, userId, message);
+            const { id, userId, message, source, phone } = JSON.parse(msg) as {
+                id: string; userId: string; message: string; source: string; phone: string;
+            };
+            this.handleChat(id, userId, message, source, phone);
         });
     }
 
-    private async handleChat(id: string, userId: string, message: string) {
+    private async handleChat(id: string, userId: string, message: string, source: string, phone: string) {
         try {
-            for await (const chunk of this.agentProvider.stream(userId, message)) {
+            for await (const chunk of this.agentProvider.stream(userId, message, source, phone)) {
                 await this.pub.publish("bus:chat:chunk", JSON.stringify({ id, chunk, done: false }));
             }
             await this.pub.publish("bus:chat:chunk", JSON.stringify({ id, chunk: "", done: true }));
