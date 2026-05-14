@@ -8,6 +8,13 @@ services:
     image: mongo:7
     container_name: broker_mongo
     restart: unless-stopped
+    entrypoint: >
+      bash -c "
+        openssl rand -base64 756 > /tmp/mongo.key &&
+        chmod 400 /tmp/mongo.key &&
+        chown 999:999 /tmp/mongo.key &&
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo.key
+      "
     ports:
       - "27019:27017"
     environment:
@@ -22,7 +29,37 @@ services:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
+
+  # ─────────────────────────────────────────
+  # One-shot: initiates the replica set and
+  # waits until the node reaches PRIMARY state
+  # ─────────────────────────────────────────
+  mongo-init:
+    image: mongo:7
+    container_name: broker_mongo_init
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - broker_net
+    command: >
+      mongosh --host mongo:27017
+        -u ${MONGO_USER:-broker} -p ${MONGO_PASSWORD}
+        --authenticationDatabase admin
+        --eval "
+          try { rs.status(); }
+          catch(e) {
+            rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]});
+          }
+          var tries = 0;
+          while (tries++ < 30) {
+            if (rs.status().myState === 1) { print('PRIMARY ready'); break; }
+            sleep(1000);
+          }
+        "
 
   # ─────────────────────────────────────────
   # Redis — сессии диалогов + pub/sub шина
@@ -60,12 +97,14 @@ services:
       PORT: 3001
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+      OPENAI_EMBEDDINGS_MODEL: ${OPENAI_EMBEDDINGS_MODEL:-text-embedding-3-small}
       REDIS_URL: redis://redis:6379
-      MONGO_URL: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin
+      DB_URL: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin&replicaSet=rs0
       REALITY_BACKEND_URL: http://reality-backend:3002
+      YANDEX_MAPS_API_KEY: ${YANDEX_MAPS_API_KEY}
     depends_on:
-      mongo:
-        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       reality-backend:
@@ -93,7 +132,7 @@ services:
     environment:
       HTTP_PORT: 3002
       REDIS_URL: redis://redis:6379
-      DB_URI: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/reality-backend?authSource=admin
+      DB_URI: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/reality-backend?authSource=admin&replicaSet=rs0
       ENABLE_EXTENDED_ERROR_LOGS: ${ENABLE_EXTENDED_ERROR_LOGS:-0}
     depends_on:
       mongo:
@@ -118,7 +157,7 @@ services:
     environment:
       AGENT_URL: http://agent:3001
       REDIS_URL: redis://redis:6379
-      DB_URI: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin
+      DB_URI: mongodb://${MONGO_USER:-broker}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-broker_db}?authSource=admin&replicaSet=rs0
       # Telegram бот
       TG_BOT_TOKEN: ${TG_BOT_TOKEN}
       # Telegram юзербот

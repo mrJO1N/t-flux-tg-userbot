@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
-import { AgentProvider, ConfigProvider } from "./features"
-import { Inject, Injectable, LoggerService } from "./infrastructure";
+import { AgentProvider } from "./features"
+import { Inject, Injectable, LoggerService, ConfigProvider } from "./infrastructure";
 
 @Injectable()
 export class MessageBusRepo {

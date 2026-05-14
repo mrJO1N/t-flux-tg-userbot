@@ -1,5 +1,4 @@
-import { ConfigProvider } from "../features";
-import { forwardRef, Inject, Injectable } from "./index";
+import { forwardRef, Inject, Injectable, ConfigProvider } from "./index";
 import pino, { type Logger } from "pino";
 
 @Injectable()

@@ -1,16 +1,5 @@
-import { Singleton } from "../../infrastructure/injector"
-
-// config.ts
-const rawConfigSchema = {
-    LOG_LEVEL: "string",
-    REDIS_URL: { type: "string", required: true },
-    OPENAI_API_KEY: { type: "string", required: true },
-    OPENAI_BASE_URL: { type: "string", required: true },
-    REALITY_BACKEND_URL: { type: "string", required: true },
-} as const
-
-
-
+import { Singleton } from "../injector"
+import { rawConfigSchema } from "./config.schema"
 
 const configSchema = Object.entries(rawConfigSchema).reduce(
     (acc, [key, value]) => {

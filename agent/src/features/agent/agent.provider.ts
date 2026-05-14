@@ -6,9 +6,9 @@ import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts
 import { ChatOpenAI } from "@langchain/openai";
 import { BaseListChatMessageHistory } from "@langchain/core/chat_history";
 import { BaseMessage, mapChatMessagesToStoredMessages, mapStoredMessagesToChatMessages } from "@langchain/core/messages";
-import { Inject, Singleton } from "../../infrastructure";
-import { ConfigProvider } from "../config";
+import { Inject, Singleton, ConfigProvider } from "../../infrastructure";
 import { UtilCacheRepository } from "../utils";
+import { RagProvider } from "../rag";
 import { AgentToolsProvider } from "./tools";
 
 const rawSystemPrompt = readFileSync(join(__dirname, "../../../SYSTEM_PROMPT.md"), "utf-8");
@@ -51,10 +51,13 @@ export class AgentProvider {
     constructor(
         @Inject(ConfigProvider) private readonly config: ConfigProvider,
         @Inject(UtilCacheRepository) private readonly cache: UtilCacheRepository,
-        @Inject(AgentToolsProvider) private readonly agentToolsProvider: AgentToolsProvider
+        @Inject(AgentToolsProvider) private readonly agentToolsProvider: AgentToolsProvider,
+        @Inject(RagProvider) private readonly ragProvider: RagProvider,
     ) { }
 
     async init(): Promise<void> {
+        await this.ragProvider.init();
+
         const llm = new ChatOpenAI({
             model: "gemini-3-flash",
             temperature: 0.3,

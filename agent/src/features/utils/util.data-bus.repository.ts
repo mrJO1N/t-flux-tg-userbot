@@ -1,6 +1,6 @@
 import Redis from "ioredis"
 import { Inject, Singleton } from "../../infrastructure"
-import { ConfigProvider } from "../config"
+import { ConfigProvider } from "../../infrastructure"
 
 type Handler = (data: unknown) => void
 
